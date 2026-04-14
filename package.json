@@ -1,0 +1,97 @@
+{
+  "name": "space-invaders",
+  "displayName": "Space Invaders",
+  "description": "Retro arcade Space Invaders game for Visual Studio Code.",
+  "publisher": "Strifelab",
+  "author": "Strifelab",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Strifelab/Vscode-Space-Invaders.git"
+  },
+  "homepage": "https://github.com/Strifelab/Vscode-Space-Invaders",
+  "bugs": {
+    "url": "https://github.com/Strifelab/Vscode-Space-Invaders/issues"
+  },
+  "version": "1.0.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "space-invaders",
+    "game",
+    "retro",
+    "arcade",
+    "shooter"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0a0a0a",
+    "theme": "dark"
+  },
+  "markdown": "github",
+  "qna": "marketplace",
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "spaceInvaders.gameView",
+          "name": "Space Invaders",
+          "initialSize": 500
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Space Invaders",
+      "properties": {
+        "spaceInvaders.difficulty": {
+          "type": "string",
+          "default": "medium",
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ],
+          "description": "Game difficulty level."
+        },
+        "spaceInvaders.bulletSpeed": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 10,
+          "description": "Player bullet speed (1-10)."
+        },
+        "spaceInvaders.initialLives": {
+          "type": "number",
+          "default": 3,
+          "minimum": 1,
+          "maximum": 6,
+          "description": "Number of lives at game start (1-6)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "npm run check-types && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && node esbuild.js --production",
+    "build-vsix": "npm run package && vsce package",
+    "check-types": "tsc --noEmit",
+    "vscode:prepublish": "npm run package"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.0.0",
+    "esbuild": "^0.25.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.7.0"
+  }
+}

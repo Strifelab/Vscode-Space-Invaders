@@ -1,0 +1,537 @@
+/* ============================================================================
+   SPACE INVADERS — Retro Arcade Style
+   ============================================================================
+   Dark background, neon green/cyan/magenta accents, monospace uppercase text.
+   ============================================================================ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #0a0a0a;
+    color: #00ff41;
+    font-family: 'Courier New', Consolas, monospace;
+    overflow: hidden;
+    user-select: none;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px;
+    max-height: 100vh;
+    gap: 6px;
+}
+
+/* ── Canvas ─────────────────────────────────────────────────────────── */
+
+#gameCanvas {
+    display: block;
+    border: 1px solid #00ff41;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    outline: none;
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.15);
+}
+
+#gameCanvas:focus {
+    box-shadow: 0 0 12px rgba(0, 255, 65, 0.3);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+
+#buttons {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+}
+
+button {
+    background: #111;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    padding: 6px 10px;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+button:hover {
+    background: #00ff41;
+    color: #0a0a0a;
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.4);
+}
+
+button:active {
+    transform: scale(0.96);
+    box-shadow: 0 0 4px rgba(0, 255, 65, 0.3);
+}
+
+#stopBtn {
+    border-color: #ff0040;
+    color: #ff0040;
+}
+
+#stopBtn:hover {
+    background: #ff0040;
+    color: #0a0a0a;
+    box-shadow: 0 0 10px rgba(255, 0, 64, 0.4);
+}
+
+/* ── Name Overlay (Game Over) ───────────────────────────────────────── */
+
+#name-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+#name-overlay-box {
+    background: #111;
+    border: 1px solid #00ff41;
+    padding: 16px;
+    text-align: center;
+    max-width: 80%;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+#name-overlay-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #ff0040;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(255, 0, 64, 0.5);
+}
+
+#name-overlay-score,
+#name-overlay-wave {
+    font-size: 11px;
+    color: #00ff41;
+    margin-bottom: 4px;
+}
+
+#nameInput {
+    display: block;
+    width: 100%;
+    margin: 10px 0 8px;
+    padding: 6px 8px;
+    background: #0a0a0a;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    text-align: center;
+    letter-spacing: 2px;
+    outline: none;
+}
+
+#nameInput::placeholder {
+    color: #306230;
+    text-transform: uppercase;
+}
+
+#nameInput:focus {
+    box-shadow: 0 0 6px rgba(0, 255, 65, 0.3);
+}
+
+#name-overlay-box button {
+    width: 100%;
+    padding: 8px;
+}
+
+/* ── Pause Overlay ──────────────────────────────────────────────────── */
+
+#pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 15;
+    cursor: pointer;
+}
+
+#pause-overlay-box {
+    background: #111;
+    border: 1px solid #00ccff;
+    padding: 16px 24px;
+    text-align: center;
+    box-shadow: 0 0 16px rgba(0, 204, 255, 0.2);
+}
+
+#pause-overlay-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00ccff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+}
+
+#pause-overlay-message {
+    font-size: 10px;
+    color: #00ccff;
+    opacity: 0.7;
+}
+
+/* ── Leaderboard Overlay ────────────────────────────────────────────── */
+
+#leaderboard-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+#leaderboard-box {
+    background: #111;
+    border: 1px solid #00ff41;
+    padding: 16px;
+    text-align: center;
+    max-width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+#leaderboard-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00ff41;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+}
+
+#leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+    font-size: 10px;
+}
+
+#leaderboard-table th {
+    color: #00ccff;
+    border-bottom: 1px solid #00ccff;
+    padding: 4px 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+#leaderboard-table td {
+    color: #00ff41;
+    padding: 4px 6px;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.1);
+}
+
+#leaderboard-table tr:first-child td {
+    color: #ffcc00;
+}
+
+#leaderboard-box button {
+    width: 100%;
+    margin-top: 6px;
+}
+
+/* ── Leaderboard ────────────────────────────────────────────────────── */
+
+#leaderboard {
+    width: 100%;
+    padding: 8px;
+}
+
+#leaderboard h3,
+#leaderboard-title {
+    text-align: center;
+    font-size: 14px;
+    color: #00ff41;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.3);
+}
+
+#leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9px;
+    margin-bottom: 10px;
+}
+
+#leaderboard-table th {
+    background: #111;
+    color: #00ff41;
+    border: 1px solid #1a3a1a;
+    padding: 4px 3px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: bold;
+}
+
+#leaderboard-table td {
+    border: 1px solid #1a3a1a;
+    padding: 3px;
+    text-align: center;
+    color: #00cc33;
+    font-size: 9px;
+}
+
+#leaderboard-table tbody tr:nth-child(odd) {
+    background: #0f0f0f;
+}
+
+#leaderboard-table tbody tr:nth-child(even) {
+    background: #141414;
+}
+
+#leaderboard-table tbody tr:first-child td {
+    color: #ffff00;
+    font-weight: bold;
+}
+
+#leaderboard-table tbody tr:nth-child(2) td {
+    color: #cccccc;
+}
+
+#leaderboard-table tbody tr:nth-child(3) td {
+    color: #ff8800;
+}
+
+#leaderboard button {
+    width: 100%;
+    margin-top: 4px;
+}
+
+/* ── Settings ───────────────────────────────────────────────────────── */
+
+#settings-page {
+    width: 100%;
+    padding: 8px;
+}
+
+#settings-page h3 {
+    text-align: center;
+    font-size: 14px;
+    color: #00ff41;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+    text-shadow: 0 0 6px rgba(0, 255, 65, 0.3);
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 8px;
+}
+
+.setting-row span {
+    font-size: 10px;
+    color: #00cc33;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+}
+
+select,
+input[type="range"] {
+    background: #0a0a0a;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 10px;
+    padding: 3px 4px;
+    outline: none;
+    cursor: pointer;
+}
+
+select {
+    min-width: 80px;
+}
+
+select:focus,
+input[type="range"]:focus {
+    box-shadow: 0 0 4px rgba(0, 255, 65, 0.3);
+}
+
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 0;
+    flex: 1;
+    max-width: 90px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #00ff41;
+    border: none;
+    cursor: pointer;
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #00ff41;
+    border: none;
+    cursor: pointer;
+    border-radius: 0;
+}
+
+#bulletSpeedValue,
+#livesValue {
+    font-size: 10px;
+    color: #00ff41;
+    min-width: 14px;
+    text-align: center;
+}
+
+#settings-page > button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* ── Settings Overlay ───────────────────────────────────────────────── */
+
+#settings-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.88);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+}
+
+#settings-box {
+    background: #111;
+    border: 1px solid #00ff41;
+    padding: 20px;
+    text-align: center;
+    min-width: 260px;
+    max-width: 85%;
+    box-shadow: 0 0 20px rgba(0, 255, 65, 0.2);
+}
+
+#settings-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #00ff41;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.5);
+}
+
+#settings-box .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    gap: 10px;
+}
+
+#settings-box .setting-row span {
+    font-size: 10px;
+    color: #00cc33;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.setting-desc {
+    font-size: 9px;
+    color: #00ccff;
+    opacity: 0.8;
+    margin-bottom: 14px;
+    min-height: 14px;
+}
+
+#settings-box select {
+    background: #0a0a0a;
+    color: #00ff41;
+    border: 1px solid #00ff41;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 10px;
+    padding: 3px 6px;
+    outline: none;
+    cursor: pointer;
+    min-width: 90px;
+}
+
+#settings-box select:focus {
+    box-shadow: 0 0 4px rgba(0, 255, 65, 0.3);
+}
+
+#settings-box button {
+    width: 100%;
+    margin-top: 5px;
+}
+
+#settingsStartBtn {
+    border-color: #00ccff;
+    color: #00ccff;
+}
+
+#settingsStartBtn:hover {
+    background: #00ccff;
+    color: #0a0a0a;
+    box-shadow: 0 0 10px rgba(0, 204, 255, 0.4);
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #1a3a1a;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #00ff41;
+}
