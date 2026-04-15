@@ -169,7 +169,8 @@
     difficulty: "medium",
     bulletSpeed: 5,
     initialLives: 3,
-    powerupDropRate: 20,
+    powerupDropRate: 5,
+    powerupDropRateOptions: [3, 5, 8, 10, 15, 20],
     language: "en",
   };
 
@@ -494,18 +495,16 @@
         settings.bulletSpeed = msg.bulletSpeed || 5;
         settings.initialLives = msg.initialLives || 3;
         settings.powerupDropRate =
-          msg.powerupDropRate !== undefined ? msg.powerupDropRate : 20;
+          msg.powerupDropRate !== undefined ? msg.powerupDropRate : 5;
 
-        // Populate powerup drop rate options dynamically
-        if (msg.powerupDropRateOptions) {
-          powerupDropRateSelect.innerHTML = "";
-          msg.powerupDropRateOptions.forEach(function (rate) {
-            const option = document.createElement("option");
-            option.value = String(rate);
-            option.textContent = rate + "%";
-            powerupDropRateSelect.appendChild(option);
-          });
-        }
+        // Populate powerup drop rate options from settings
+        powerupDropRateSelect.innerHTML = "";
+        settings.powerupDropRateOptions.forEach(function (rate) {
+          const option = document.createElement("option");
+          option.value = String(rate);
+          option.textContent = rate + "%";
+          powerupDropRateSelect.appendChild(option);
+        });
 
         if (msg.language) {
           settings.language = msg.language;

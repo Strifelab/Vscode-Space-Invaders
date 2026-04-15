@@ -109,7 +109,7 @@
         },
         "spaceInvaders.powerupDropRate": {
           "type": "number",
-          "default": 20,
+          "default": 5,
           "enum": [
             3,
             5,

@@ -38,15 +38,12 @@ export class GameViewProvider implements vscode.WebviewViewProvider {
         case "getSettings": {
           const config = vscode.workspace.getConfiguration("spaceInvaders");
           const language = this._getLanguage();
-          // Get powerup drop rate options from package.json config
-          const powerupDropRateOptions = [0, 10, 20, 30, 40, 50];
           webviewView.webview.postMessage({
             type: "settingsData",
             difficulty: config.get<string>("difficulty", "medium"),
             bulletSpeed: config.get<number>("bulletSpeed", 5),
             initialLives: config.get<number>("initialLives", 3),
-            powerupDropRate: config.get<number>("powerupDropRate", 20),
-            powerupDropRateOptions: powerupDropRateOptions,
+            powerupDropRate: config.get<number>("powerupDropRate", 5),
             language: language,
           });
           break;
