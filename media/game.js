@@ -12,9 +12,75 @@
   const vscode = acquireVsCodeApi();
 
   // ── i18n helper ──────────────────────────────────────────────────────────
-  const LANG = "it";
+  let LANG = "en"; // Will be set by VS Code settings
   function t(key) {
     return (I18N[LANG] && I18N[LANG][key]) || key;
+  }
+
+  // Function to update all UI text based on current language
+  function updateUIText() {
+    // Buttons
+    document.getElementById("startBtn").textContent = t("startGame");
+    document.getElementById("stopBtn").textContent = t("stop");
+    document.getElementById("settingsBtn").textContent = t("settings");
+    document.getElementById("leaderboardBtn").textContent = t("leaderboard");
+
+    // Game Over Overlay
+    document.getElementById("name-overlay-title").textContent = t("gameOver");
+    document.getElementById("nameInput").placeholder =
+      t("namePlaceholder").toUpperCase();
+    document.getElementById("saveScoreBtn").textContent = t("save");
+
+    // Pause Overlay
+    document.getElementById("pause-overlay-title").textContent = t("paused");
+    document.getElementById("pause-overlay-message").textContent =
+      t("pausedMessage");
+
+    // Leaderboard Overlay
+    document.getElementById("leaderboard-title").textContent =
+      t("leaderboard").toUpperCase();
+    document.getElementById("th-rank").textContent = t("rank");
+    document.getElementById("th-name").textContent = t("name");
+    document.getElementById("th-points").textContent = t("pointsHeader");
+    document.getElementById("th-wave").textContent = t("waveHeader");
+    document.getElementById("th-date").textContent = t("date");
+    document.getElementById("leaderboardBackBtn").textContent = t("back");
+
+    // Settings Overlay
+    document.getElementById("settings-title").textContent =
+      t("settings").toUpperCase();
+    document.getElementById("settings-difficulty-label").textContent =
+      t("difficulty").toUpperCase();
+    document.getElementById("settings-powerup-label").textContent =
+      t("powerupDropRate").toUpperCase();
+    document.getElementById("settings-language-label").textContent =
+      t("language").toUpperCase();
+    document.getElementById("settingsStartBtn").textContent = t("play");
+    document.getElementById("settingsBackBtn").textContent = t("back");
+
+    // Difficulty options
+    const difficultySelect = document.getElementById("difficultySelect");
+    difficultySelect.options[0].textContent = t("easy");
+    difficultySelect.options[1].textContent = t("medium");
+    difficultySelect.options[2].textContent = t("hard");
+
+    // Language options
+    const languageSelect = document.getElementById("languageSelect");
+    languageSelect.options[0].textContent = t("langEnglish");
+    languageSelect.options[1].textContent = t("langFrench");
+    languageSelect.options[2].textContent = t("langSpanish");
+    languageSelect.options[3].textContent = t("langItalian");
+    languageSelect.options[4].textContent = t("langGerman");
+    languageSelect.options[5].textContent = t("langPortuguese");
+    languageSelect.options[6].textContent = t("langChinese");
+    languageSelect.options[7].textContent = t("langJapanese");
+    languageSelect.options[8].textContent = t("langKorean");
+    languageSelect.options[9].textContent = t("langRussian");
+    languageSelect.options[10].textContent = t("langHindi");
+
+    // Update descriptions
+    updateDifficultyDesc();
+    updatePowerupDesc();
   }
 
   // ── DOM refs ─────────────────────────────────────────────────────────────
@@ -22,6 +88,7 @@
   const ctx = canvas.getContext("2d");
   const startBtn = document.getElementById("startBtn");
   const stopBtn = document.getElementById("stopBtn");
+  const settingsBtn = document.getElementById("settingsBtn");
   const leaderboardBtn = document.getElementById("leaderboardBtn");
   const nameOverlay = document.getElementById("name-overlay");
   const nameScore = document.getElementById("name-overlay-score");
@@ -35,8 +102,16 @@
   const settingsOverlay = document.getElementById("settings-overlay");
   const difficultySelect = document.getElementById("difficultySelect");
   const difficultyDesc = document.getElementById("difficulty-desc");
+  const powerupDropRateSelect = document.getElementById(
+    "powerupDropRateSelect",
+  );
+  const powerupDesc = document.getElementById("powerup-desc");
+  const languageSelect = document.getElementById("languageSelect");
   const settingsStartBtn = document.getElementById("settingsStartBtn");
   const settingsBackBtn = document.getElementById("settingsBackBtn");
+  const difficultyRow = document.getElementById("difficulty-row");
+  const powerupRow = document.getElementById("powerup-row");
+  const languageRow = document.getElementById("language-row");
 
   // ── Customisable constants ───────────────────────────────────────────────
   const CANVAS_W = 345;
@@ -57,7 +132,7 @@
   const EXPLOSION_FRAMES = 12;
   const POWERUP_SIZE = 15;
   const POWERUP_FALL_SPEED = 1.5;
-  const POWERUP_DROP_CHANCE = 0.08;
+  const POWERUP_DROP_CHANCE = 0.05;
   const POWERUP_DURATION_MS = 8000; // durata boost in ms (parametrizzabile)
   const TRIPLESHOT_DURATION = POWERUP_DURATION_MS;
   const MISSILE_RADIUS = 25;
@@ -90,7 +165,13 @@
   const WAVE_TIER_AGGRESSION = [1.0, 0.7, 0.5]; // tier 0 (w1-3), tier 1 (w4-6), tier 2 (w7+)
 
   // ── Settings (overridden by VS Code config) ──────────────────────────────
-  let settings = { difficulty: "medium", bulletSpeed: 5, initialLives: 3 };
+  let settings = {
+    difficulty: "medium",
+    bulletSpeed: 5,
+    initialLives: 3,
+    powerupDropRate: 20,
+    language: "en",
+  };
 
   // ── Sprite definitions (pixel-art matrices) ──────────────────────────────
   // Each sprite is an array of rows; each row is a string of 0/1.
@@ -267,14 +348,24 @@
     keys[e.code] = false;
   });
 
-  // Keep focus on canvas
+  // Keep focus on canvas (only when the webview itself has focus)
   canvas.addEventListener("blur", function () {
-    if (STATE === "playing") {
+    if (STATE === "playing" && document.hasFocus()) {
       // Small delay to allow button clicks to register
       setTimeout(function () {
-        if (STATE === "playing") canvas.focus();
+        if (STATE === "playing" && document.hasFocus()) canvas.focus();
       }, 100);
     }
+  });
+
+  // Auto-pause when the webview loses focus (e.g. user switches to editor)
+  window.addEventListener("blur", function () {
+    if (STATE === "playing") pauseGame();
+  });
+
+  // Auto-resume when the webview regains focus
+  window.addEventListener("focus", function () {
+    if (STATE === "paused") resumeGame();
   });
 
   // ── Button handlers ──────────────────────────────────────────────────────
@@ -286,6 +377,12 @@
     if (STATE === "playing" || STATE === "paused") {
       STATE = "gameover";
       showGameOver();
+    }
+  });
+
+  settingsBtn.addEventListener("click", function () {
+    if (STATE === "idle" || STATE === "gameover") {
+      showSettings(true);
     }
   });
 
@@ -314,33 +411,75 @@
   });
 
   // ── Settings handlers ────────────────────────────────────────────────────
-  var DIFFICULTY_DESCRIPTIONS = {
-    easy: "Nemici lenti, pochi colpi. Perfetto per iniziare.",
-    medium: "Velocit\u00E0 ed aggressivit\u00E0 bilanciate.",
-    hard: "Nemici veloci, colpi multipli. Buona fortuna!",
-  };
-
   function updateDifficultyDesc() {
-    difficultyDesc.textContent =
-      DIFFICULTY_DESCRIPTIONS[difficultySelect.value] || "";
+    const value = difficultySelect.value;
+    if (value === "easy") {
+      difficultyDesc.textContent = t("difficultyEasyDesc");
+    } else if (value === "medium") {
+      difficultyDesc.textContent = t("difficultyMediumDesc");
+    } else if (value === "hard") {
+      difficultyDesc.textContent = t("difficultyHardDesc");
+    }
+  }
+
+  function updatePowerupDesc() {
+    powerupDesc.textContent = t("powerupDropRateDesc");
   }
 
   difficultySelect.addEventListener("change", updateDifficultyDesc);
 
-  function showSettings() {
+  function showSettings(fromButton) {
     difficultySelect.value = settings.difficulty;
+    powerupDropRateSelect.value = String(settings.powerupDropRate);
+    languageSelect.value = settings.language;
     updateDifficultyDesc();
+    updatePowerupDesc();
     settingsOverlay.style.display = "flex";
+
+    if (fromButton) {
+      // Settings from main menu: show only language and powerup drop rate
+      difficultyRow.style.display = "none";
+      difficultyDesc.style.display = "none";
+      powerupRow.style.display = "";
+      powerupDesc.style.display = "";
+      languageRow.style.display = "";
+      settingsStartBtn.style.display = "none";
+      settingsBackBtn.style.display = "";
+    } else {
+      // New Game: show only difficulty
+      difficultyRow.style.display = "";
+      difficultyDesc.style.display = "";
+      powerupRow.style.display = "none";
+      powerupDesc.style.display = "none";
+      languageRow.style.display = "none";
+      settingsStartBtn.style.display = "";
+      settingsBackBtn.style.display = "";
+    }
   }
 
   settingsStartBtn.addEventListener("click", function () {
     settings.difficulty = difficultySelect.value;
+    settings.powerupDropRate = Number(powerupDropRateSelect.value);
+    const newLang = languageSelect.value;
+    if (newLang !== settings.language) {
+      settings.language = newLang;
+      LANG = newLang;
+      updateUIText();
+    }
     settingsOverlay.style.display = "none";
     startGame();
     canvas.focus();
   });
 
   settingsBackBtn.addEventListener("click", function () {
+    const oldLang = settings.language;
+    settings.powerupDropRate = Number(powerupDropRateSelect.value);
+    const newLang = languageSelect.value;
+    if (newLang !== oldLang) {
+      settings.language = newLang;
+      LANG = newLang;
+      updateUIText();
+    }
     settingsOverlay.style.display = "none";
     STATE = "idle";
     canvas.focus();
@@ -354,12 +493,34 @@
         settings.difficulty = msg.difficulty || "medium";
         settings.bulletSpeed = msg.bulletSpeed || 5;
         settings.initialLives = msg.initialLives || 3;
+        settings.powerupDropRate =
+          msg.powerupDropRate !== undefined ? msg.powerupDropRate : 20;
+
+        // Populate powerup drop rate options dynamically
+        if (msg.powerupDropRateOptions) {
+          powerupDropRateSelect.innerHTML = "";
+          msg.powerupDropRateOptions.forEach(function (rate) {
+            const option = document.createElement("option");
+            option.value = String(rate);
+            option.textContent = rate + "%";
+            powerupDropRateSelect.appendChild(option);
+          });
+        }
+
+        if (msg.language) {
+          settings.language = msg.language;
+          LANG = msg.language;
+          updateUIText();
+        }
         break;
       case "leaderboardData":
         renderLeaderboard(msg.scores || []);
         break;
       case "pause":
         if (STATE === "playing") pauseGame();
+        break;
+      case "resume":
+        if (STATE === "paused") resumeGame();
         break;
     }
   });
@@ -368,6 +529,7 @@
   function init() {
     generateStars();
     vscode.postMessage({ type: "getSettings" });
+    // updateUIText() will be called when settingsData arrives
     drawIdleScreen();
     canvas.focus();
   }
@@ -408,6 +570,10 @@
     pauseOverlay.style.display = "none";
     leaderboardOverlay.style.display = "none";
     settingsOverlay.style.display = "none";
+    stopBtn.style.display = "";
+    startBtn.style.display = "none";
+    settingsBtn.style.display = "none";
+    leaderboardBtn.style.display = "none";
     STATE = "playing";
     lastTime = performance.now();
     requestAnimationFrame(gameLoop);
@@ -427,6 +593,10 @@
   }
 
   function showGameOver() {
+    stopBtn.style.display = "none";
+    startBtn.style.display = "";
+    settingsBtn.style.display = "";
+    leaderboardBtn.style.display = "";
     nameOverlay.style.display = "flex";
     nameScore.textContent = t("points") + ": " + score;
     nameWave.textContent = t("waveReached") + ": " + wave;
@@ -919,7 +1089,8 @@
 
   // ── Powerups ─────────────────────────────────────────────────────────
   function maybeSpawnPowerup(x, y) {
-    if (Math.random() > POWERUP_DROP_CHANCE) return;
+    const dropChance = settings.powerupDropRate / 100;
+    if (Math.random() > dropChance) return;
     var types = ["tripleshot", "missile", "extralife"];
     var type = types[Math.floor(Math.random() * types.length)];
     powerups.push({ x: x - POWERUP_SIZE / 2, y: y, type: type });

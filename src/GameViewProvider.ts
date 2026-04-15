@@ -37,11 +37,17 @@ export class GameViewProvider implements vscode.WebviewViewProvider {
       switch (message.type) {
         case "getSettings": {
           const config = vscode.workspace.getConfiguration("spaceInvaders");
+          const language = this._getLanguage();
+          // Get powerup drop rate options from package.json config
+          const powerupDropRateOptions = [0, 10, 20, 30, 40, 50];
           webviewView.webview.postMessage({
             type: "settingsData",
             difficulty: config.get<string>("difficulty", "medium"),
             bulletSpeed: config.get<number>("bulletSpeed", 5),
             initialLives: config.get<number>("initialLives", 3),
+            powerupDropRate: config.get<number>("powerupDropRate", 20),
+            powerupDropRateOptions: powerupDropRateOptions,
+            language: language,
           });
           break;
         }
@@ -83,11 +89,45 @@ export class GameViewProvider implements vscode.WebviewViewProvider {
     webviewView.onDidChangeVisibility(() => {
       if (!webviewView.visible) {
         webviewView.webview.postMessage({ type: "pause" });
+      } else {
+        webviewView.webview.postMessage({ type: "resume" });
       }
     });
   }
 
+  private _getLanguage(): string {
+    const config = vscode.workspace.getConfiguration("spaceInvaders");
+    const configLang = config.get<string>("language", "auto");
+
+    if (configLang !== "auto") {
+      return configLang;
+    }
+
+    // Get VS Code's display language
+    const vscodeLocale = vscode.env.language; // e.g., "en", "it", "fr-FR"
+    const langCode = vscodeLocale.split("-")[0]; // Extract base language code
+
+    // Check if we support this language
+    const supportedLanguages = [
+      "en",
+      "fr",
+      "es",
+      "it",
+      "de",
+      "pt",
+      "zh",
+      "ja",
+      "ko",
+      "ru",
+      "hi",
+    ];
+
+    return supportedLanguages.includes(langCode) ? langCode : "en";
+  }
+
   private _getHtmlForWebview(webview: vscode.Webview): string {
+    const nonce = getNonce();
+
     const cssUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, "media", "game.css")
     );
@@ -97,14 +137,32 @@ export class GameViewProvider implements vscode.WebviewViewProvider {
     const i18nConfigUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, "media", "i18n", "config.js")
     );
-    const i18nItUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this._extensionUri, "media", "i18n", "it.js")
-    );
 
-    const nonce = getNonce();
+    // Get all i18n language file URIs
+    const supportedLanguages = [
+      "en",
+      "fr",
+      "es",
+      "it",
+      "de",
+      "pt",
+      "zh",
+      "ja",
+      "ko",
+      "ru",
+      "hi",
+    ];
+    const i18nScripts = supportedLanguages
+      .map((lang) => {
+        const uri = webview.asWebviewUri(
+          vscode.Uri.joinPath(this._extensionUri, "media", "i18n", `${lang}.js`)
+        );
+        return `<script nonce="${nonce}" src="${uri}"></script>`;
+      })
+      .join("\n  ");
 
     return /* html */ `<!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="Content-Security-Policy"
@@ -120,65 +178,89 @@ export class GameViewProvider implements vscode.WebviewViewProvider {
     <canvas id="gameCanvas" width="345" height="402" tabindex="0"></canvas>
 
     <div id="buttons">
-      <button id="startBtn">Nuova Partita</button>
-      <button id="stopBtn">Stop</button>
-      <button id="leaderboardBtn">Classifica</button>
+      <button id="startBtn"></button>
+      <button id="stopBtn" style="display:none;"></button>
+      <button id="settingsBtn"></button>
+      <button id="leaderboardBtn"></button>
     </div>
   </div>
 
   <!-- Game Over Overlay -->
   <div id="name-overlay" style="display:none;">
     <div id="name-overlay-box">
-      <div id="name-overlay-title">GAME OVER</div>
+      <div id="name-overlay-title"></div>
       <div id="name-overlay-score"></div>
       <div id="name-overlay-wave"></div>
-      <input id="nameInput" type="text" maxlength="20" placeholder="NOME" autocomplete="off">
-      <button id="saveScoreBtn">Salva</button>
+      <input id="nameInput" type="text" maxlength="20" placeholder="" autocomplete="off">
+      <button id="saveScoreBtn"></button>
     </div>
   </div>
 
   <!-- Pause Overlay -->
   <div id="pause-overlay" style="display:none;">
     <div id="pause-overlay-box">
-      <div id="pause-overlay-title">PAUSA</div>
-      <div id="pause-overlay-message">Premi P per riprendere</div>
+      <div id="pause-overlay-title"></div>
+      <div id="pause-overlay-message"></div>
     </div>
   </div>
 
   <!-- Leaderboard Overlay -->
   <div id="leaderboard-overlay" style="display:none;">
     <div id="leaderboard-box">
-      <div id="leaderboard-title">CLASSIFICA</div>
+      <div id="leaderboard-title"></div>
       <table id="leaderboard-table">
         <thead>
-          <tr><th>#</th><th>Nome</th><th>Punti</th><th>Ondata</th><th>Data</th></tr>
+          <tr><th id="th-rank"></th><th id="th-name"></th><th id="th-points"></th><th id="th-wave"></th><th id="th-date"></th></tr>
         </thead>
         <tbody id="leaderboard-body"></tbody>
       </table>
-      <button id="leaderboardBackBtn">Indietro</button>
+      <button id="leaderboardBackBtn"></button>
     </div>
   </div>
 
   <!-- Settings Overlay -->
   <div id="settings-overlay" style="display:none;">
     <div id="settings-box">
-      <div id="settings-title">IMPOSTAZIONI</div>
-      <div class="setting-row">
-        <span>DIFFICOLT\u00C0</span>
+      <div id="settings-title"></div>
+      <div id="difficulty-row" class="setting-row">
+        <span id="settings-difficulty-label"></span>
         <select id="difficultySelect">
-          <option value="easy">Facile</option>
-          <option value="medium" selected>Medio</option>
-          <option value="hard">Difficile</option>
+          <option value="easy"></option>
+          <option value="medium" selected></option>
+          <option value="hard"></option>
         </select>
       </div>
       <div id="difficulty-desc" class="setting-desc"></div>
-      <button id="settingsStartBtn">GIOCA</button>
-      <button id="settingsBackBtn">Indietro</button>
+      <div id="powerup-row" class="setting-row">
+        <span id="settings-powerup-label"></span>
+        <select id="powerupDropRateSelect">
+          <!-- Options populated dynamically from config -->
+        </select>
+      </div>
+      <div id="powerup-desc" class="setting-desc"></div>
+      <div id="language-row" class="setting-row">
+        <span id="settings-language-label"></span>
+        <select id="languageSelect">
+          <option value="en"></option>
+          <option value="fr"></option>
+          <option value="es"></option>
+          <option value="it"></option>
+          <option value="de"></option>
+          <option value="pt"></option>
+          <option value="zh"></option>
+          <option value="ja"></option>
+          <option value="ko"></option>
+          <option value="ru"></option>
+          <option value="hi"></option>
+        </select>
+      </div>
+      <button id="settingsStartBtn"></button>
+      <button id="settingsBackBtn"></button>
     </div>
   </div>
 
   <script nonce="${nonce}" src="${i18nConfigUri}"></script>
-  <script nonce="${nonce}" src="${i18nItUri}"></script>
+  ${i18nScripts}
   <script nonce="${nonce}" src="${gameJsUri}"></script>
 </body>
 </html>`;

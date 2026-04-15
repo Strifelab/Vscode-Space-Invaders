@@ -50,6 +50,39 @@
     "configuration": {
       "title": "Space Invaders",
       "properties": {
+        "spaceInvaders.language": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "en",
+            "fr",
+            "es",
+            "it",
+            "de",
+            "pt",
+            "zh",
+            "ja",
+            "ko",
+            "ru",
+            "hi"
+          ],
+          "enumDescriptions": [
+            "Automatic (use VS Code language)",
+            "English",
+            "Français",
+            "Español",
+            "Italiano",
+            "Deutsch",
+            "Português",
+            "中文",
+            "日本語",
+            "한국어",
+            "Русский",
+            "हिन्दी"
+          ],
+          "description": "Game interface language. Set to 'auto' to use VS Code's display language."
+        },
         "spaceInvaders.difficulty": {
           "type": "string",
           "default": "medium",
@@ -73,6 +106,19 @@
           "minimum": 1,
           "maximum": 6,
           "description": "Number of lives at game start (1-6)."
+        },
+        "spaceInvaders.powerupDropRate": {
+          "type": "number",
+          "default": 20,
+          "enum": [
+            3,
+            5,
+            8,
+            10,
+            15,
+            20
+          ],
+          "description": "Powerup drop rate percentage (0-50%)."
         }
       }
     }
