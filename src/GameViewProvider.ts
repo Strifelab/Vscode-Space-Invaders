@@ -117,7 +117,7 @@ export class GameViewProvider implements vscode.WebviewViewProvider {
 </head>
 <body>
   <div id="game-container">
-    <canvas id="gameCanvas" width="300" height="350" tabindex="0"></canvas>
+    <canvas id="gameCanvas" width="345" height="402" tabindex="0"></canvas>
 
     <div id="buttons">
       <button id="startBtn">Nuova Partita</button>

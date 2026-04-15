@@ -39,8 +39,8 @@
   const settingsBackBtn = document.getElementById("settingsBackBtn");
 
   // ── Customisable constants ───────────────────────────────────────────────
-  const CANVAS_W = 300;
-  const CANVAS_H = 350;
+  const CANVAS_W = 345;
+  const CANVAS_H = 402;
   const PLAYER_W = 18;
   const PLAYER_H = 11;
   const PLAYER_SPEED = 3;
@@ -55,10 +55,11 @@
   const INVULN_MS = 2000;
   const WAVE_PAUSE_MS = 1500;
   const EXPLOSION_FRAMES = 12;
-  const POWERUP_SIZE = 8;
+  const POWERUP_SIZE = 15;
   const POWERUP_FALL_SPEED = 1.5;
   const POWERUP_DROP_CHANCE = 0.08;
-  const TRIPLESHOT_DURATION = 5000;
+  const POWERUP_DURATION_MS = 8000; // durata boost in ms (parametrizzabile)
+  const TRIPLESHOT_DURATION = POWERUP_DURATION_MS;
   const MISSILE_RADIUS = 25;
   const MISSILE_SHOTS = 3;
   const MAX_LIVES = 6;
@@ -543,11 +544,7 @@
   function shootPlayer() {
     var cx = player.x + PLAYER_W / 2;
     var by = player.y - BULLET_H;
-    if (
-      activePowerup &&
-      activePowerup.type === "missile" &&
-      activePowerup.shots > 0
-    ) {
+    if (activePowerup && activePowerup.type === "missile") {
       // Triple parallel vertical shots
       playerBullets.push({
         x: cx - BULLET_W / 2,
@@ -567,8 +564,6 @@
         vx: 0,
         isMissile: false,
       });
-      activePowerup.shots--;
-      if (activePowerup.shots <= 0) activePowerup = null;
     } else if (activePowerup && activePowerup.type === "tripleshot") {
       playerBullets.push({
         x: cx - BULLET_W / 2,
@@ -936,7 +931,7 @@
         activePowerup = { type: "tripleshot", timer: TRIPLESHOT_DURATION };
         break;
       case "missile":
-        activePowerup = { type: "missile", shots: MISSILE_SHOTS };
+        activePowerup = { type: "missile", timer: POWERUP_DURATION_MS };
         break;
       case "extralife":
         if (lives < MAX_LIVES) lives++;
@@ -951,7 +946,10 @@
         powerups.splice(i, 1);
       }
     }
-    if (activePowerup && activePowerup.type === "tripleshot") {
+    if (
+      activePowerup &&
+      (activePowerup.type === "tripleshot" || activePowerup.type === "missile")
+    ) {
       activePowerup.timer -= dt;
       if (activePowerup.timer <= 0) activePowerup = null;
     }
@@ -1019,7 +1017,7 @@
 
     // Wave pause text
     if (STATE === "wavepause") {
-      drawCenteredText(t("wave") + " " + wave, CANVAS_H / 2, 14, "#00ccff");
+      drawCenteredText(t("wave") + " " + wave, CANVAS_H / 2, 16, "#00ccff");
     }
   }
 
@@ -1107,9 +1105,11 @@
       var px = pu.x;
       var py = pu.y;
 
-      // Background box
+      // Background circle
       ctx.fillStyle = "#222";
-      ctx.fillRect(px, py, s, s);
+      ctx.beginPath();
+      ctx.arc(px + s / 2, py + s / 2, s / 2, 0, Math.PI * 2);
+      ctx.fill();
 
       if (pu.type === "extralife") {
         // Red heart pixel icon (7x6 in 8x8 box)
@@ -1177,14 +1177,22 @@
         }
       }
 
-      // Border
-      ctx.strokeStyle = "#666";
-      ctx.strokeRect(px, py, s, s);
+      // Border (round)
+      var borderColor = "#666";
+      if (pu.type === "extralife") borderColor = "#ff0040";
+      else if (pu.type === "tripleshot") borderColor = "#00ff41";
+      else if (pu.type === "missile") borderColor = "#00ccff";
+      ctx.strokeStyle = borderColor;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(px + s / 2, py + s / 2, s / 2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = 1;
     }
   }
 
   function drawHUD() {
-    ctx.font = "10px 'Courier New', Consolas, monospace";
+    ctx.font = "12px 'Courier New', Consolas, monospace";
     ctx.textBaseline = "top";
 
     // Score — left
@@ -1199,24 +1207,24 @@
     // Lives — right (red hearts)
     ctx.textAlign = "right";
     ctx.fillStyle = "#ff0040";
-    ctx.fillText(t("lives").toUpperCase() + ": ", CANVAS_W - 5 - lives * 10, 4);
+    ctx.fillText(t("lives").toUpperCase() + ": ", CANVAS_W - 5 - lives * 12, 4);
     for (var i = 0; i < lives; i++) {
-      var hx = CANVAS_W - 5 - (lives - i) * 10;
+      var hx = CANVAS_W - 5 - (lives - i) * 12;
       ctx.fillStyle = "#ff0040";
-      ctx.font = "10px 'Courier New', Consolas, monospace";
+      ctx.font = "12px 'Courier New', Consolas, monospace";
       ctx.fillText("\u2665", hx, 4);
     }
 
     // Separator line
     ctx.strokeStyle = "rgba(0,255,65,0.2)";
     ctx.beginPath();
-    ctx.moveTo(0, 18);
-    ctx.lineTo(CANVAS_W, 18);
+    ctx.moveTo(0, 20);
+    ctx.lineTo(CANVAS_W, 20);
     ctx.stroke();
 
     // Active powerup loadbar + label
     if (activePowerup) {
-      var barY = 20;
+      var barY = 22;
       var barH = 4;
       var barW = CANVAS_W - 10;
       var barX = 5;
@@ -1229,8 +1237,8 @@
         ratio = Math.max(0, activePowerup.timer / TRIPLESHOT_DURATION);
       } else if (activePowerup.type === "missile") {
         puColor = "#00ccff";
-        puText = "||| x" + activePowerup.shots;
-        ratio = activePowerup.shots / MISSILE_SHOTS;
+        puText = "|||  MISSILE";
+        ratio = Math.max(0, activePowerup.timer / POWERUP_DURATION_MS);
       }
       if (puText) {
         // Bar background
@@ -1244,7 +1252,7 @@
         ctx.strokeRect(barX, barY, barW, barH);
         // Label
         ctx.fillStyle = puColor;
-        ctx.font = "bold 7px 'Courier New', Consolas, monospace";
+        ctx.font = "bold 8px 'Courier New', Consolas, monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "top";
         ctx.fillText(puText, CANVAS_W / 2, barY + barH + 1);
@@ -1267,15 +1275,15 @@
     drawStars();
 
     // Title
-    drawCenteredText("SPACE INVADERS", CANVAS_H / 2 - 65, 18, "#00ff41");
+    drawCenteredText("SPACE INVADERS", CANVAS_H / 2 - 75, 21, "#00ff41");
 
     // Decorative alien sprites
-    drawSprite("squidA", CANVAS_W / 2 - 36, CANVAS_H / 2 - 35, "#ff00ff", 10);
-    drawSprite("crabA", CANVAS_W / 2 - 5, CANVAS_H / 2 - 35, "#ffcc00", 10);
-    drawSprite("octopusA", CANVAS_W / 2 + 24, CANVAS_H / 2 - 35, "#00ff41", 10);
+    drawSprite("squidA", CANVAS_W / 2 - 36, CANVAS_H / 2 - 40, "#ff00ff", 10);
+    drawSprite("crabA", CANVAS_W / 2 - 5, CANVAS_H / 2 - 40, "#ffcc00", 10);
+    drawSprite("octopusA", CANVAS_W / 2 + 24, CANVAS_H / 2 - 40, "#00ff41", 10);
 
     // Score table
-    ctx.font = "9px 'Courier New', Consolas, monospace";
+    ctx.font = "10px 'Courier New', Consolas, monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -1283,32 +1291,32 @@
     ctx.fillText(
       "= 30 " + t("points").toUpperCase(),
       CANVAS_W / 2 - 30,
-      CANVAS_H / 2 - 6,
+      CANVAS_H / 2 - 11,
     );
     ctx.fillStyle = "#ffcc00";
     ctx.fillText(
       "= 20 " + t("points").toUpperCase(),
       CANVAS_W / 2,
-      CANVAS_H / 2 + 6,
+      CANVAS_H / 2 + 1,
     );
     ctx.fillStyle = "#00ff41";
     ctx.fillText(
       "= 10 " + t("points").toUpperCase(),
       CANVAS_W / 2 + 30,
-      CANVAS_H / 2 + 18,
+      CANVAS_H / 2 + 13,
     );
 
     // Instructions
     drawCenteredText(
       t("pressStart").toUpperCase(),
       CANVAS_H / 2 + 42,
-      9,
+      10,
       "#00ccff",
     );
     drawCenteredText(
       "A/\u2190 \u2192/D MOVE  SPACE FIRE  P PAUSE",
-      CANVAS_H / 2 + 56,
-      6,
+      CANVAS_H / 2 + 58,
+      7,
       "rgba(0,255,65,0.5)",
     );
   }
