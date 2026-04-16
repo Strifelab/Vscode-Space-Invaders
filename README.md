@@ -1,5 +1,7 @@
 # Space Invaders for Visual Studio Code
 
+![Space Invaders preview](./media/space-invaders-preview.gif)
+
 Space Invaders for Visual Studio Code brings a compact retro shooter directly into the Explorer side bar. It is a lightweight webview extension built for quick arcade sessions without leaving the editor.
 
 ## Why install it
